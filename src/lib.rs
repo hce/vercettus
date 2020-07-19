@@ -1,3 +1,4 @@
+extern crate byteorder;
 extern crate encoding;
 #[macro_use]
 extern crate enum_primitive_derive;

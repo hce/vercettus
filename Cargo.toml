@@ -17,6 +17,7 @@ path = "src/vercettus.rs"
 
 [dependencies]
 argparse = "*"
+byteorder = "*"
 encoding = "*"
 enum-primitive-derive = "*"
 nom = "*"

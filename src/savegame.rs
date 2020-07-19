@@ -1,3 +1,4 @@
+use byteorder::{WriteBytesExt, LE};
 use encoding::Encoding;
 use nom::{number::complete::*, IResult};
 use num_traits::{FromPrimitive, ToPrimitive};
@@ -7,6 +8,14 @@ pub struct VCVector {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+impl VCVector {
+    pub fn to_bin(&self, buf: &mut Vec<u8>) {
+        buf.write_f32::<LE>(self.x).unwrap();
+        buf.write_f32::<LE>(self.y).unwrap();
+        buf.write_f32::<LE>(self.z).unwrap();
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -181,9 +190,60 @@ pub struct VCCarGenerators {
     pub active_car_generators: u32,
     pub process_counter: u8,
     pub generate_even_if_player_is_close_counter: u8,
+    pub align: u16,
     pub sub_subblock_size: u32,
     // 2 byte align
     pub generators: Vec<VCCarGenerator>,
+}
+
+impl VCCarGenerators {
+    pub fn to_bin(&self, buf: &mut Vec<u8>) {
+        let begin_size = buf.len();
+        buf.write_u32::<LE>(self.subblock_size).unwrap();
+        buf.write_u32::<LE>(self.magic).unwrap();
+        buf.write_u32::<LE>(self.rest_size).unwrap();
+        buf.write_u32::<LE>(self.subdata_size).unwrap();
+        let num_car_generators = self.generators.len();
+        buf.write_u32::<LE>(num_car_generators as u32).unwrap();
+        let active_car_generators = self.generators.iter().filter(|g| g.is_on).count();
+        buf.write_u32::<LE>(active_car_generators as u32).unwrap();
+        buf.write_u8(self.process_counter).unwrap();
+        buf.write_u8(self.generate_even_if_player_is_close_counter)
+            .unwrap();
+        buf.write_u16::<LE>(self.align).unwrap();
+        buf.write_u32::<LE>(self.sub_subblock_size).unwrap();
+        self.generators.iter().for_each(|g| g.to_bin(buf));
+        let end_size = buf.len();
+        let size = end_size - begin_size;
+        for i in 0..(self.sub_subblock_size as usize - size) {
+            buf.push(0);
+        }
+    }
+}
+
+impl VCCarGenerator {
+    pub fn to_bin(&self, buf: &mut Vec<u8>) {
+        let vehicle_num = self.vehicle.to_u32().unwrap();
+        buf.write_u32::<LE>(vehicle_num).unwrap();
+        self.coordinates.to_bin(buf);
+        buf.write_f32::<LE>(self.heading).unwrap();
+        buf.write_u16::<LE>(self.primary_color).unwrap();
+        buf.write_u16::<LE>(self.secondary_color).unwrap();
+        buf.write_u8(if self.force_spawn { 1 } else { 0 }).unwrap();
+        buf.write_u8(if self.alarm { 1 } else { 0 }).unwrap();
+        buf.write_u8(if self.lock { 1 } else { 0 }).unwrap();
+        buf.write_u8(self.align1).unwrap();
+        buf.write_u16::<LE>(self.min_delay).unwrap();
+        buf.write_u16::<LE>(self.max_delay).unwrap();
+        buf.write_u32::<LE>(self.game_timer_when_car_is_generated)
+            .unwrap();
+        buf.write_i32::<LE>(self.vehicle_index).unwrap();
+        buf.write_i16::<LE>(if self.is_on { -1 } else { 0 })
+            .unwrap();
+        buf.write_u8(if self.recently_stolen { 1 } else { 0 })
+            .unwrap();
+        buf.write_u8(self.align2).unwrap();
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -196,7 +256,7 @@ pub struct VCCarGenerator {
     pub force_spawn: bool,
     pub alarm: bool,
     pub lock: bool,
-    // 1 byte align
+    pub align1: u8,
     pub min_delay: u16,
     pub max_delay: u16,
     pub game_timer_when_car_is_generated: u32,
@@ -204,11 +264,13 @@ pub struct VCCarGenerator {
     pub is_on: bool,
     // word
     pub recently_stolen: bool,
-    // one byte align
+    pub align2: u8,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VCSaveGame {
+    pub checksum: u32,
+    pub computed_checksum: u32,
     pub preamble: VCPreamble,
     pub car_generators: VCCarGenerators,
 }
@@ -359,14 +421,14 @@ fn parse_car_generator(input: &[u8]) -> IResult<&[u8], VCCarGenerator> {
     let (input, force_spawn) = le_u8(input).map(|i| (i.0, i.1 != 0))?;
     let (input, alarm) = le_u8(input).map(|i| (i.0, i.1 != 0))?;
     let (input, lock) = le_u8(input).map(|i| (i.0, i.1 != 0))?;
-    let (input, _align) = le_u8(input)?;
+    let (input, align1) = le_u8(input)?;
     let (input, min_delay) = le_u16(input)?;
     let (input, max_delay) = le_u16(input)?;
     let (input, game_timer_when_car_is_generated) = le_u32(input)?;
     let (input, vehicle_index) = le_i32(input)?;
     let (input, is_on) = le_i16(input).map(|i| (i.0, i.1 != 0))?;
     let (input, recently_stolen) = le_u8(input).map(|i| (i.0, i.1 != 0))?;
-    let (input, _align) = le_u8(input)?;
+    let (input, align2) = le_u8(input)?;
     Ok((
         input,
         VCCarGenerator {
@@ -378,12 +440,14 @@ fn parse_car_generator(input: &[u8]) -> IResult<&[u8], VCCarGenerator> {
             force_spawn,
             alarm,
             lock,
+            align1,
             min_delay,
             max_delay,
             game_timer_when_car_is_generated,
             vehicle_index,
             is_on,
             recently_stolen,
+            align2,
         },
     ))
 }
@@ -397,7 +461,7 @@ fn parse_gc(input: &[u8]) -> IResult<&[u8], VCCarGenerators> {
     let (input, active_car_generators) = le_u32(input)?;
     let (input, process_counter) = le_u8(input)?;
     let (input, generate_even_if_player_is_close_counter) = le_u8(input)?;
-    let (input, _) = nom::bytes::complete::take(2 as usize)(input)?;
+    let (input, align) = le_u16(input)?;
     let (input, sub_subblock_size) = le_u32(input)?;
     let (_, generators) = nom::multi::many_m_n(
         num_car_generators as usize,
@@ -412,6 +476,7 @@ fn parse_gc(input: &[u8]) -> IResult<&[u8], VCCarGenerators> {
         active_car_generators,
         process_counter,
         generate_even_if_player_is_close_counter,
+        align,
         sub_subblock_size,
         generators,
     };
@@ -431,8 +496,44 @@ pub fn parse_savegame(buf: &[u8]) -> IResult<&[u8], VCSaveGame> {
     Ok((
         input,
         VCSaveGame {
+            checksum,
+            computed_checksum,
             preamble,
             car_generators,
         },
     ))
+}
+
+pub fn patch_savegame(buf: &[u8], patch_info: &VCSaveGame) -> Result<Vec<u8>, String> {
+    let (input, (mut blocks, checksum)) =
+        parse_blocks(buf).map_err(|e| format!("Parse error (O): {:?}", e))?;
+
+    let (_, preamble) =
+        parse_preamble(blocks.get(0).unwrap()).map_err(|e| format!("Parse error (P): {:?}", e))?;
+
+    let computed_checksum = buf[0..buf.len() - 4]
+        .iter()
+        .fold(0 as u32, |acc, i| acc + (*i as u32));
+
+    let blocks = blocks.as_mut_slice();
+
+    let mut buf = Vec::new();
+    let car_gen_block = patch_info.car_generators.to_bin(&mut buf);
+    let orig_block14_len = blocks[14].len();
+    for i in 0..(orig_block14_len - buf.len()) {
+        buf.push(0);
+    }
+    blocks[14] = buf.as_slice();
+
+    let mut out = Vec::new();
+    for block in blocks {
+        use std::io::Write;
+        out.write_u32::<LE>(block.len() as u32).unwrap();
+        out.write(block).unwrap();
+    }
+    let mut new_checksum: u32 = 0;
+    new_checksum = out.iter().fold(new_checksum, |a, i| a + (*i as u32));
+    eprintln!("Checksum {} -> {}", checksum, new_checksum);
+    out.write_u32::<LE>(new_checksum).unwrap();
+    Ok(out)
 }
