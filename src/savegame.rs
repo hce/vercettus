@@ -224,7 +224,9 @@ impl VCCarGenerators {
         self.generators.iter().for_each(|g| g.to_bin(buf));
         let end_size = buf.len();
         let size = end_size - begin_size;
-        for _i in 0..(self.sub_subblock_size as usize - size) {
+        let padding_size = self.sub_subblock_size as usize - size;
+        eprintln!("VFCarGenerators padding size = {}", padding_size);
+        for _i in 0..padding_size {
             buf.push(0);
         }
     }
@@ -535,7 +537,9 @@ pub fn patch_savegame(buf: &[u8], patch_info: &VCSaveGame) -> Result<Vec<u8>, St
     let mut buf = Vec::new();
     patch_info.car_generators.to_bin(&mut buf);
     let orig_block14_len = blocks[14].len();
-    for _i in 0..(orig_block14_len - buf.len()) {
+    let padding_size = orig_block14_len - buf.len();
+    eprintln!("Padding size: {}", padding_size);
+    for _i in 0..padding_size {
         buf.push(0);
     }
     blocks[14] = buf.as_slice();
