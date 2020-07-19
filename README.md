@@ -1,15 +1,55 @@
+# Vercettus command line utility
+
+## Intention
+
 The intention of this small tool is to read Vice City savegames
 and write them to a .yaml file. You can modify that yaml file
 and then have this tool apply the changes you made to the
 original savegame file.
 
-This is currently in development and I don't know how far I'll
-push it. My personal motivation is to be able to fiddle with
-the car generators. For example, I placed an apaci on the roof
-of the estate :-) (Though I did this with a hex editor.)
+This is currently in development and I don't know how far I'll push
+it. So far, you can edit the *car generator* section and apply your
+changes to the original savegame. For example, I placed an apaci on
+the roof of the estate :-)
 
-What currently works is conversion of the car gen section
-of a savegame to a .yaml file. Example:
+## Steps
+
+### BACKUP your savegames!
+
+### Export the savegame to yaml:
+
+    vercettus -c "C:\path\to\your\savegame" -o sg.yaml
+
+### edit sg.yaml
+
+### Apply your changes:
+
+    vercettis -i sg.yaml -o "C:\path\to\your\savegame"
+
+## Couple Notes
+
+It is recommended that you apply the .yaml file to the same savegame
+file you generated it from. While it is possible to apply it to a
+different savegame file, this may cause unanticipated results. For
+example, each car generator has a "next generation time" timestamp
+stored on it. Now, if you were to generate a .yaml file from a pretty
+advanced game state and to import it to a lesser one, your in-game
+timers may be much smaller than the ones set on the cars, leading to
+the car generators to not work until you wait a lot of time. You have
+been warned.
+
+## More notes
+
+* Patches welcome! :-) I'd also like to hear from happy users.
+
+* This currently only works with the PC steam edition of the game.
+
+## Even more notes
+
+This utility would not have been possible without the stuff found at
+various websites, most notably https://gtamods.com/wiki/Saves_(GTA_VC)
+
+## Excerpt of a yaml file:
 
     ---
     - []
