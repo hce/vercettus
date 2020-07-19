@@ -1,5 +1,4 @@
 use encoding::Encoding;
-use nom::bytes::complete::take_while_m_n;
 use nom::{number::complete::*, IResult};
 use num_traits::{FromPrimitive, ToPrimitive};
 
@@ -428,11 +427,6 @@ pub fn parse_savegame(buf: &[u8]) -> IResult<&[u8], VCSaveGame> {
     let computed_checksum = buf[0..buf.len() - 4]
         .iter()
         .fold(0 as u32, |acc, i| acc + (*i as u32));
-    eprintln!(
-        "Read checksum: {}; computed checksum: {}",
-        checksum, computed_checksum
-    );
-    eprintln!("Num blocks: {}", blocks.len());
 
     Ok((
         input,

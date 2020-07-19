@@ -16,6 +16,7 @@ path = "src/vercettus.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+argparse = "*"
 encoding = "*"
 enum-primitive-derive = "*"
 nom = "*"
