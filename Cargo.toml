@@ -3,6 +3,7 @@ name = "vercettus"
 version = "0.1.0"
 authors = ["Hans-Christian Esperer <hc@caiberp.com>"]
 edition = "2018"
+license = "MIT"
 
 [lib]
 crate-type = ["lib"]

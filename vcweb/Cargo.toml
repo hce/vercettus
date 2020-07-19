@@ -3,6 +3,7 @@ name = "vcweb"
 version = "0.1.0"
 authors = ["Hans-Christian Esperer <hc@hcesperer.org>"]
 edition = "2018"
+license = "MIT"
 
 [profile.release]
 lto = true
