@@ -9,8 +9,18 @@ original savegame file.
 
 This is currently in development and I don't know how far I'll push
 it. So far, you can edit the *car generator* section and apply your
-changes to the original savegame. For example, I placed an apaci on
-the roof of the estate :-)
+changes to the original savegame. Car generators are responsible for
+respawning cars, helicopters and boats at certain predefined locations
+in the game.
+
+For example, I placed an apaci on the roof of the estate :-)
+(Helicopters seem to count as cars, for all data structure intents and
+purposes)
+
+You can modify the existing car generators and *add _a few_ new ones*,
+until the few extra bytes available in the savegame file run out. You
+can change the locked and alarm flags and set the colors of the cars.
+You can also fiddle with the coordinates.
 
 ## Steps
 
