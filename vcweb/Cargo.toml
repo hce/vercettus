@@ -1,0 +1,21 @@
+[package]
+name = "vcweb"
+version = "0.1.0"
+authors = ["Hans-Christian Esperer <hc@hcesperer.org>"]
+edition = "2018"
+
+[profile.release]
+lto = true
+
+[lib]
+crate-type = [ "cdylib", "lib" ]
+name = "vcweb"
+path = "src/lib.rs"
+
+[dependencies]
+vercettus = { path="../vercettus" }
+
+serde = "*"
+serde_yaml = "*"
+stdweb = "*"
+wasm-bindgen = "*"
