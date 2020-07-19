@@ -1,7 +1,6 @@
 use byteorder::{WriteBytesExt, LE};
 use encoding::Encoding;
-use nom::bytes::complete::{take_till, take_until};
-use nom::{number::complete::*, FindSubstring, IResult};
+use nom::{number::complete::*, IResult};
 use num_traits::{FromPrimitive, ToPrimitive};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -346,7 +345,12 @@ fn parse_preamble(input: &[u8]) -> IResult<&[u8], VCPreamble> {
     let (input, current_level) = le_u32(input)?;
     let (input, camera_coordinates) = parse_vector(input)?;
     let (input, dampf) = le_u32(input)?; // TODO: check value
-    let (input, ms_per_game_minute) = le_u32(input)?;
+    let (input, ms_per_game_minute, dampf) = if dampf == 1000 {
+        (input, dampf, None)
+    } else {
+        let (input, mpgm) = le_u32(input)?;
+        (input, mpgm, Some(dampf))
+    };
     let (input, game_timer) = le_u32(input)?;
     let (input, game_hour) = le_u8(input)?;
     // alignment
@@ -402,7 +406,7 @@ fn parse_preamble(input: &[u8]) -> IResult<&[u8], VCPreamble> {
             magic,
             current_level,
             camera_coordinates,
-            dampf: Some(dampf),
+            dampf,
             ms_per_game_minute,
             game_timer,
             game_hour,
