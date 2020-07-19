@@ -13,7 +13,7 @@ name = "vcweb"
 path = "src/lib.rs"
 
 [dependencies]
-vercettus = { path="../vercettus" }
+vercettus = { path=".." }
 
 serde = "*"
 serde_yaml = "*"
