@@ -1,0 +1,25 @@
+[package]
+name = "vercettus"
+version = "0.1.0"
+authors = ["Hans-Christian Esperer <hc@caiberp.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["lib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "vercettus"
+path = "src/vercettus.rs"
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+encoding = "*"
+enum-primitive-derive = "*"
+nom = "*"
+num-traits = "*"
+serde = "*"
+serde_derive = "*"
+serde_yaml = "*"
