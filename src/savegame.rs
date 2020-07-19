@@ -1,6 +1,7 @@
 use byteorder::{WriteBytesExt, LE};
 use encoding::Encoding;
-use nom::{number::complete::*, IResult};
+use nom::bytes::complete::{take_till, take_until};
+use nom::{number::complete::*, FindSubstring, IResult};
 use num_traits::{FromPrimitive, ToPrimitive};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -317,10 +318,19 @@ fn parse_vector(input: &[u8]) -> IResult<&[u8], VCVector> {
 
 fn parse_preamble(input: &[u8]) -> IResult<&[u8], VCPreamble> {
     let (input, last_mission_passed) = nom::bytes::complete::take(48 as usize)(input).map(|b| {
+        let b1 = b.1;
+        let mut f = 0;
+        for i in (0..b1.len()).step_by(2) {
+            if b1[i] == 0 && b1[i + 1] == 0 {
+                f = i;
+                break;
+            }
+        }
+        let b11 = if f == 0 { b1 } else { b1.split_at(f).0 };
         (
             b.0,
             encoding::all::UTF_16LE
-                .decode(b.1, encoding::DecoderTrap::Ignore)
+                .decode(b11, encoding::DecoderTrap::Ignore)
                 .unwrap(),
         )
     })?;

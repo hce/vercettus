@@ -14,7 +14,7 @@ of a savegame to a .yaml file. Example:
     ---
     - []
     - preamble:
-        last_mission_passed: "Hog Tied\u0000\u0019ﲄ\u0019瞖\u0000\u0000\u0000\u0000\u0000\u0000\u0004\u0000ﲸ\u0000"
+        last_mission_passed: "Hog Tied"
         w_year: 2020
         w_month: 7
         w_day_of_week: 2
