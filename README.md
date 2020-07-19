@@ -34,7 +34,7 @@ You can also fiddle with the coordinates.
 
 ### Apply your changes:
 
-    vercettis -i sg.yaml -o "C:\path\to\your\savegame"
+    vercettus -i sg.yaml -o "C:\path\to\your\savegame"
 
 ## Couple Notes
 
