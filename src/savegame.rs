@@ -71,7 +71,7 @@ pub struct VCPreamble {
 
 #[derive(Debug, Serialize, Deserialize, Primitive)]
 pub enum VCVehicle {
-    Unknown = 0,
+    ByRawNumber = 0,
     LandStalker = 130,
     Idaho = 131,
     Stinger = 132,
@@ -181,6 +181,15 @@ pub enum VCVehicle {
     ViceChee = 236,
 }
 
+impl VCVehicle {
+    pub fn is_raw(&self) -> bool {
+        match self {
+            VCVehicle::ByRawNumber => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VCCarGenerators {
     pub subblock_size: u32,
@@ -215,7 +224,7 @@ impl VCCarGenerators {
         self.generators.iter().for_each(|g| g.to_bin(buf));
         let end_size = buf.len();
         let size = end_size - begin_size;
-        for i in 0..(self.sub_subblock_size as usize - size) {
+        for _i in 0..(self.sub_subblock_size as usize - size) {
             buf.push(0);
         }
     }
@@ -223,7 +232,11 @@ impl VCCarGenerators {
 
 impl VCCarGenerator {
     pub fn to_bin(&self, buf: &mut Vec<u8>) {
-        let vehicle_num = self.vehicle.to_u32().unwrap();
+        let vehicle_num = if self.vehicle.is_raw() {
+            self.vehicle_raw_num.unwrap_or(0)
+        } else {
+            self.vehicle.to_u32().unwrap()
+        };
         buf.write_u32::<LE>(vehicle_num).unwrap();
         self.coordinates.to_bin(buf);
         buf.write_f32::<LE>(self.heading).unwrap();
@@ -249,6 +262,7 @@ impl VCCarGenerator {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VCCarGenerator {
     pub vehicle: VCVehicle,
+    pub vehicle_raw_num: Option<u32>,
     pub coordinates: VCVector,
     pub heading: f32,
     pub primary_color: u16,
@@ -408,12 +422,8 @@ fn parse_preamble(input: &[u8]) -> IResult<&[u8], VCPreamble> {
 }
 
 fn parse_car_generator(input: &[u8]) -> IResult<&[u8], VCCarGenerator> {
-    let (input, vehicle) = le_u32(input).map(|vn| {
-        (
-            vn.0,
-            VCVehicle::from_u32(vn.1).unwrap_or(VCVehicle::Unknown),
-        )
-    })?;
+    let (input, vehicle_raw_num) = le_u32(input)?;
+    let vehicle = VCVehicle::from_u32(vehicle_raw_num).unwrap_or(VCVehicle::ByRawNumber);
     let (input, coordinates) = parse_vector(input)?;
     let (input, heading) = le_f32(input)?;
     let (input, primary_color) = le_u16(input)?;
@@ -429,10 +439,16 @@ fn parse_car_generator(input: &[u8]) -> IResult<&[u8], VCCarGenerator> {
     let (input, is_on) = le_i16(input).map(|i| (i.0, i.1 != 0))?;
     let (input, recently_stolen) = le_u8(input).map(|i| (i.0, i.1 != 0))?;
     let (input, align2) = le_u8(input)?;
+    let vehicle_is_raw = vehicle.is_raw();
     Ok((
         input,
         VCCarGenerator {
             vehicle,
+            vehicle_raw_num: if vehicle_is_raw {
+                Some(vehicle_raw_num)
+            } else {
+                None
+            },
             coordinates,
             heading,
             primary_color,
@@ -507,20 +523,19 @@ pub fn parse_savegame(buf: &[u8]) -> IResult<&[u8], VCSaveGame> {
 pub fn patch_savegame(buf: &[u8], patch_info: &VCSaveGame) -> Result<Vec<u8>, String> {
     let (input, (mut blocks, checksum)) =
         parse_blocks(buf).map_err(|e| format!("Parse error (O): {:?}", e))?;
+    if !input.is_empty() {
+        return Err("Some rest left when parsing game savefile".to_string());
+    }
 
-    let (_, preamble) =
+    let (_, _preamble) =
         parse_preamble(blocks.get(0).unwrap()).map_err(|e| format!("Parse error (P): {:?}", e))?;
-
-    let computed_checksum = buf[0..buf.len() - 4]
-        .iter()
-        .fold(0 as u32, |acc, i| acc + (*i as u32));
 
     let blocks = blocks.as_mut_slice();
 
     let mut buf = Vec::new();
-    let car_gen_block = patch_info.car_generators.to_bin(&mut buf);
+    patch_info.car_generators.to_bin(&mut buf);
     let orig_block14_len = blocks[14].len();
-    for i in 0..(orig_block14_len - buf.len()) {
+    for _i in 0..(orig_block14_len - buf.len()) {
         buf.push(0);
     }
     blocks[14] = buf.as_slice();

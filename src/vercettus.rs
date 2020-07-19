@@ -93,6 +93,10 @@ fn main() {
             buf
         };
         let (rest, sg) = vercettus::savegame::parse_savegame(&buf).expect("Parse savegame failed");
+        if !rest.is_empty() {
+            eprintln!("ERROR: Some rest left after trying to parse savegame");
+            exit(5);
+        }
         let yaml = serde_yaml::to_string(&sg).unwrap();
         let out_fn = yaml_to_write.unwrap();
         let out_f = std::fs::File::create(&out_fn);
